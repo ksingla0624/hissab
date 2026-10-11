@@ -10,7 +10,7 @@
   <receiver android:name=".SmsReceiver" android:exported="true" android:permission="android.permission.BROADCAST_SMS"><intent-filter android:priority="999"><action android:name="android.provider.Telephony.SMS_RECEIVED"/></intent-filter></receiver>
   <receiver android:name=".Receiver" android:exported="false"/>
   <receiver android:name=".Boot" android:exported="true"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver>
-  <provider android:name="androidx.core.content.FileProvider" android:authorities="com.myfinance.app.fp" android:exported="false" android:grantUriPermissions="true">
+  <provider android:name="androidx.core.content.FileProvider" android:authorities="com.hissab.app.fp" android:exported="false" android:grantUriPermissions="true">
    <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/paths"/>
   </provider>
  </application>

@@ -1,4 +1,4 @@
-package com.myfinance.app
+package com.hissab.app
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
@@ -64,7 +64,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun pickBackup() {
             runOnUiThread {
                 startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json")
-                    .putExtra(Intent.EXTRA_TITLE, "my-finance-data.json")
+                    .putExtra(Intent.EXTRA_TITLE, "hissab-data.json")
                     .addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION), 3)
             }
         }
@@ -80,7 +80,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun schedule(json: String) { Sched.run(this@MainActivity, json) }
         @JavascriptInterface fun share(name: String, text: String) {
             val f = File(cacheDir, name); f.writeText(text)
-            val u = FileProvider.getUriForFile(this@MainActivity, "com.myfinance.app.fp", f)
+            val u = FileProvider.getUriForFile(this@MainActivity, "com.hissab.app.fp", f)
             val i = Intent(Intent.ACTION_SEND).apply {
                 type = "application/json"; putExtra(Intent.EXTRA_STREAM, u); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
