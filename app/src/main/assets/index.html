@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#14532d">
+<title>Hisaab</title>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--ink:#1c2a22;--mut:#6b7a70;--g:#14532d;--cr:#15803d;--db:#b91c1c;--ln:#dfe4dc}
+@media(prefers-color-scheme:dark){:root{--bg:#101612;--card:#1a221d;--ink:#e8efe9;--mut:#93a39a;--g:#4ade80;--cr:#4ade80;--db:#f87171;--ln:#2a352e}}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:70px}
+header{background:var(--g);color:#fff;padding:14px 16px;font-size:18px;font-weight:700}
+@media(prefers-color-scheme:dark){header{color:#06240f}}
+main{padding:12px;max-width:640px;margin:auto}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:12px;margin-bottom:10px}
+h3{margin:0 0 8px;font-size:15px}
+input,select,button{font:inherit;padding:9px;border:1px solid var(--ln);border-radius:8px;background:var(--card);color:var(--ink);width:100%;margin:3px 0}
+button{background:var(--g);color:#fff;border:0;font-weight:600;cursor:pointer}
+@media(prefers-color-scheme:dark){button{color:#06240f}}
+button.s{background:transparent;color:var(--g);border:1px solid var(--g)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.big{font-size:28px;font-weight:700}
+.cr{color:var(--cr)}.db{color:var(--db)}.m{color:var(--mut);font-size:13px}
+.t{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--ln)}
+.t:last-child{border:0}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--ln)}
+nav button{background:none;color:var(--mut);border-radius:0;margin:0;padding:14px 4px}
+nav button.on{color:var(--g);box-shadow:inset 0 3px var(--g)}
+.bar{height:8px;background:var(--ln);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;background:var(--g)}
+.x{background:none;color:var(--db);width:auto;padding:0 6px}
+.tb{width:100%;border-collapse:collapse;font-size:13px}.tb th{text-align:left;color:var(--mut);font-weight:600;padding:6px 4px;border-bottom:2px solid var(--ln)}
+.tb td{padding:10px 4px;border-bottom:1px solid var(--ln)}.tb tr.r{cursor:pointer}.tb tr.sel td{background:var(--bg)}.tb .a{text-align:right;font-weight:700;white-space:nowrap}
+.sm{padding:6px 4px;font-size:13px;line-height:1.7}.sm button{width:auto;display:inline-block;padding:6px 16px;margin:6px 6px 0 0}
+nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}nav::-webkit-scrollbar{display:none}
+nav button{font-size:12px;padding:14px 2px;flex:0 0 19%;min-width:0;white-space:nowrap}
+</style></head><body>
+<header style="display:flex;align-items:center;gap:10px"><svg width="30" height="30" viewBox="22 22 64 64"><circle cx="54" cy="54" r="28" fill="#fff"/><path fill="#14532D" d="M42 68h6V58h-6zM51 68h6V50h-6zM60 68h6V42h-6z"/></svg>Hisaab</header><main id="v"></main>
+<nav id="n"></nav>
+<script>
+const MODES=['Cash','UPI','Debit Card','Credit Card','Net Banking','Cheque'];
+let D;try{D=JSON.parse(localStorage.fin)}catch(e){}
+if(!D&&window.Android&&Android.load){try{D=JSON.parse(Android.load())}catch(e){}}
+D=D||{accounts:[{id:1,name:'Main Bank',open:0}],txns:[],loans:[]};
+const $=s=>document.querySelector(s),uid=()=>Date.now()+Math.random(),inr=n=>'₹'+(+n).toLocaleString('en-IN',{maximumFractionDigits:2});
+const today=()=>new Date().toISOString().slice(0,10);
+function save(){const j=JSON.stringify(D);localStorage.fin=j;try{sched()}catch(e){}try{Android.persist(j)}catch(e){}}
+let tab='home',F={from:'',to:'',q:''};
+const tabs={home:'Home',sms:'Inbox',txn:'Entries',acc:'Accounts',due:'Due',loan:'Loans',rep:'Reports',set:'Sync'};
+function bal(a){return +a.open+D.txns.filter(t=>t.acc==a.id).reduce((s,t)=>s+(t.type=='credit'?+t.amt:-t.amt),0)}
+function go(t){tab=t;render()}
+function render(){
+$('#n').innerHTML=ord().map(k=>[k,tabs[k]]).map(([k,v])=>`<button class="${k==tab?'on':''}" onclick="go('${k}')">${v}${k=='sms'&&(D.pend||[]).length?' ('+D.pend.length+')':''}</button>`).join('');
+{const b=document.querySelector('#n .on');if(b)b.scrollIntoView({inline:'center',block:'nearest'})}$('#v').innerHTML=({home,sms,txn,acc,due,loan,rep,set})[tab]();}
+function opts(){return D.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')}
+function home(){
+const e=D.txns.find(t=>t.id==E)||{},tot=D.accounts.reduce((s,a)=>s+bal(a),0),m=today().slice(0,7);
+const mt=D.txns.filter(t=>t.date.startsWith(m)),c=mt.filter(t=>t.type=='credit').reduce((s,t)=>s+ +t.amt,0),d=mt.filter(t=>t.type=='debit').reduce((s,t)=>s+ +t.amt,0);
+return pbanner()+`<div class="card"><div class="m">Total balance</div><div class="big">${inr(tot)}</div>
+<div class="row"><div><span class="m">This month in</span><div class="cr">${inr(c)}</div></div><div><span class="m">This month out</span><div class="db">${inr(d)}</div></div></div></div>
+<div class="card" onclick="go('acc')"><h3>Accounts ›</h3>${D.accounts.map(a=>`<div class="t"><span>${a.name}</span><b>${inr(bal(a))}</b></div>`).join('')}</div>
+<div class="card"><h3>${E?'Edit entry':'Add entry'}</h3>
+<select id="ty"><option value="debit">Debit (money out)</option><option value="credit" ${e.type=='credit'?'selected':''}>Credit (money in)</option></select>
+<input id="am" type="number" placeholder="Amount" value="${e.amt||''}"><div class="row"><input id="dt" type="date" value="${e.date||today()}"><select id="md">${MODES.map(x=>`<option ${x==e.mode?'selected':''}>${x}</option>`).join('')}</select></div>
+<select id="ac">${D.accounts.map(a=>`<option value="${a.id}" ${a.id==e.acc?'selected':''}>${a.name}</option>`).join('')}</select><select id="ct">${(D.cats||DC).map(c=>`<option ${c==e.cat?'selected':''}>${c}</option>`).join('')}</select><button class="s" onclick="addCat()">+ New category</button><input id="wh" placeholder="Paid to / received from (person or shop)" value="${esc(e.who)}"><input id="nt" placeholder="Description (required)" value="${esc(e.note)}">
+<button onclick="addTxn()">${E?'Update entry':'Save entry'}</button>${E?'<button class="s" onclick="E=null;render()">Cancel</button>':''}</div>`}
+function addAcc(){const n=$('#an').value.trim();if(!n)return;D.accounts.push({id:uid(),name:n,open:+$('#ao').value||0});save();render()}
+function addTxn(){const a=+$('#am').value;if(!a)return alert('Enter an amount');if(!$('#nt').value.trim())return alert('Description is required');
+const o={type:$('#ty').value,amt:a,date:$('#dt').value,mode:$('#md').value,acc:$('#ac').value,note:$('#nt').value,who:$('#wh').value,cat:$('#ct').value};if(E){Object.assign(D.txns.find(t=>t.id==E),o);E=null}else D.txns.push({id:uid(),...o});save();render()}
+function filt(){return D.txns.filter(t=>(!F.from||t.date>=F.from)&&(!F.to||t.date<=F.to)&&(!F.q||(t.note+t.mode+(t.who||'')).toLowerCase().includes(F.q.toLowerCase()))).sort((a,b)=>b.date.localeCompare(a.date))}
+function txn(){const L=filt();return `<div class="card"><h3>Search entries</h3><div class="row"><input type="date" value="${F.from}" onchange="F.from=this.value;render()"><input type="date" value="${F.to}" onchange="F.to=this.value;render()"></div>
+<input placeholder="Search note or mode" value="${F.q}" onchange="F.q=this.value;render()"><button class="s" onclick="F={from:'',to:'',q:''};render()">Clear</button></div>
+<div class="card">${L.map(t=>`<div class="t"><span>${t.date}<br><span class="m">${t.cat?t.cat+' · ':''}${t.who?(t.type=='credit'?'From ':'To ')+t.who+' · ':''}${t.mode} · ${(D.accounts.find(a=>a.id==t.acc)||{}).name||''} ${t.note?'· '+t.note:''}</span></span>
+<span><b class="${t.type=='credit'?'cr':'db'}">${t.type=='credit'?'+':'-'}${inr(t.amt)}</b><button class="x" onclick="editTxn(${t.id})">✎</button><button class="x" onclick="delTxn(${t.id})">✕</button></span></div>`).join('')||'<div class="m">No entries found.</div>'}</div>`}
+function delTxn(id){if(confirm('Delete this entry?')){D.txns=D.txns.filter(t=>t.id!=id);save();render()}}
+/* Reports */
+function csv(from,to){const L=D.txns.filter(t=>t.date>=from&&t.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+const r=[['Date','Type','Amount','Mode','Account','Note','Person','Category']].concat(L.map(t=>[t.date,t.type,t.amt,t.mode,(D.accounts.find(a=>a.id==t.acc)||{}).name,t.note,t.who,t.cat]));
+const ci=L.filter(t=>t.type=='credit').reduce((s,t)=>s+ +t.amt,0),co=L.filter(t=>t.type=='debit').reduce((s,t)=>s+ +t.amt,0);
+r.push([],['Total credit','',ci],['Total debit','',co],['Net','',ci-co]);
+dl(r.map(x=>x.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n'),`report_${from}_to_${to}.csv`,'text/csv')}
+function dl(txt,name,type){if(window.Android){Android.save(name,type,txt);return}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()}
+function monthRep(off){const n=new Date(),s=new Date(n.getFullYear(),n.getMonth()+off,1),e=new Date(n.getFullYear(),n.getMonth()+off+1,0);
+const f=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);csv(f(s),f(e))}
+function rep(){return charts()+`<div class="card"><h3>Monthly report</h3><button onclick="monthRep(0)">Download this month</button><button class="s" onclick="monthRep(-1)">Download last month</button></div>
+<div class="card"><h3>Custom date range</h3><div class="row"><input id="rf" type="date"><input id="rt" type="date" value="${today()}"></div>
+<button onclick="$('#rf').value?csv($('#rf').value,$('#rt').value):alert('Pick a start date')">Download report (CSV)</button>
+<div class="m">CSV opens in Excel / Google Sheets.</div></div>`}
+/* Loans */
+function emiCalc(P,R,N){const r=R/1200;return r?P*r*Math.pow(1+r,N)/(Math.pow(1+r,N)-1):P/N}
+function outst(l,k){const r=l.rate/1200;return r?Math.max(0,l.P*Math.pow(1+r,k)-l.emi*(Math.pow(1+r,k)-1)/r):l.P-l.emi*k}
+function addMonths(d,n){const x=new Date(d);x.setMonth(x.getMonth()+n);return x.toISOString().slice(0,10)}
+function loan(){return D.loans.map(l=>{const k=l.paid.length,left=outst(l,k);return `<div class="card"><h3>${l.name} <span class="m">${l.lender}</span></h3>
+<div class="row"><div><span class="m">EMI</span><div><b>${inr(l.emi)}</b></div></div><div><span class="m">Outstanding</span><div><b class="db">${inr(left)}</b></div></div></div>
+<div class="m" style="margin:6px 0">${k} of ${l.n} EMIs paid · ${l.rate}% p.a. · Principal ${inr(l.P)}</div>
+<div class="bar"><i style="width:${k/l.n*100}%"></i></div>
+<div class="m" style="margin:6px 0">${k<l.n?'Next due: '+addMonths(l.start,k):'Loan closed 🎉'}</div>
+${k<l.n?`<button onclick="payEmi(${l.id})">Mark EMI paid</button>`:''}
+<details><summary class="m">Payment history</summary>${l.paid.map((d,i)=>`<div class="t"><span>EMI ${i+1}</span><span>${d}</span></div>`).join('')||'<div class="m">None yet</div>'}</details>
+<button class="s" onclick="delLoan(${l.id})">Delete loan</button></div>`}).join('')+
+`<div class="card"><h3>Add loan</h3><input id="ln" placeholder="Loan name (Home, Car…)"><input id="ll" placeholder="Lender / bank">
+<div class="row"><input id="lp" type="number" placeholder="Principal"><input id="lr" type="number" step="0.01" placeholder="Rate % p.a."></div>
+<div class="row"><input id="lt" type="number" placeholder="Tenure (months)"><input id="ls" type="date" value="${today()}"></div>
+<div class="m">First EMI date</div><button onclick="addLoan()">Save loan</button></div>`}
+function addLoan(){const P=+$('#lp').value,R=+$('#lr').value,N=+$('#lt').value;if(!P||!N||!$('#ln').value)return alert('Fill name, principal and tenure');
+D.loans.push({id:uid(),name:$('#ln').value,lender:$('#ll').value,P,rate:R,n:N,start:$('#ls').value,emi:Math.round(emiCalc(P,R,N)*100)/100,paid:[]});save();render()}
+function payEmi(id){const l=D.loans.find(x=>x.id==id);l.paid.push(today());
+if(confirm('Also record this EMI as a debit entry?'))D.txns.push({id:uid(),type:'debit',amt:l.emi,date:today(),mode:'Net Banking',acc:D.accounts[0].id,note:'EMI - '+l.name,cat:'EMI / Loan'});save();render()}
+function delLoan(id){if(confirm('Delete this loan?')){D.loans=D.loans.filter(l=>l.id!=id);save();render()}}
+/* Drive sync (app-private folder) */
+let tok;
+function auth(cb){const id=localStorage.cid;if(!id)return alert('Enter your Google Client ID first');
+if(!window.google)return alert('Google script not loaded. Check internet.');
+google.accounts.oauth2.initTokenClient({client_id:id,scope:'https://www.googleapis.com/auth/drive.appdata',callback:r=>{if(r.access_token){tok=r.access_token;cb()}}}).requestAccessToken()}
+async function find(){const r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'finance.json'&fields=files(id)",{headers:{Authorization:'Bearer '+tok}});return (await r.json()).files[0]}
+function up(){auth(async()=>{const f=await find(),h={Authorization:'Bearer '+tok};let r;
+if(f)r=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=media`,{method:'PATCH',headers:h,body:JSON.stringify(D)});
+else{const b=new FormData();b.append('metadata',new Blob([JSON.stringify({name:'finance.json',parents:['appDataFolder']})],{type:'application/json'}));b.append('file',new Blob([JSON.stringify(D)],{type:'application/json'}));
+r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:h,body:b})}
+alert(r.ok?'Backed up to Google Drive':'Backup failed')})}
+function down(){auth(async()=>{const f=await find();if(!f)return alert('No backup found in Drive');
+if(!confirm('Replace data on this device with the Drive backup?'))return;
+D=await (await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,{headers:{Authorization:'Bearer '+tok}})).json();save();render();alert('Restored')})}
+function set(){return `<div class="card"><h3>Google Drive sync</h3><input id="ci" placeholder="Google OAuth Client ID" value="${localStorage.cid||''}" onchange="localStorage.cid=this.value.trim()">
+<button onclick="up()">Back up to Drive</button><button class="s" onclick="down()">Restore from Drive</button>
+<div class="m">Data is stored in your app-private Drive folder. It also stays saved on this device.</div></div>
+<div class="card"><h3>Local backup</h3><button class="s" onclick="dl(JSON.stringify(D),'finance-backup.json','application/json')">Download JSON backup</button></div>
+`}
+function set(){return `<div class="card"><h3>Back up to Google Drive</h3>
+<button onclick="Android.share('finance-backup.json',JSON.stringify(D))">Share backup → choose Drive</button>
+<div class="m">Pick "Save to Drive" in the share sheet. Your data is also auto-backed up by Android to your Google account.</div></div>
+<div class="card"><h3>Restore</h3><input type="file" accept=".json,application/json" onchange="restore(this)">
+<div class="m">Choose a finance-backup.json file (from Drive or Downloads).</div></div>
+<div class="card"><h3>Auto-save to Google Drive</h3><button onclick="Android.pickBackup()">Choose Drive file for auto-backup</button><div class="m">${window.Android&&Android.status?Android.status():''}</div><div class="m">Pick Drive → My Drive → Save once. After that every change is written to that file automatically. A second copy is also kept inside the app.</div></div>
+<div class="card"><h3>Reset from now</h3><button class="s" style="color:var(--db);border-color:var(--db)" onclick="resetNow()">Backup &amp; start fresh</button><div class="m">Saves a backup, clears all entries, and sets today's balances as opening balances. Loans and due payments are kept.</div></div>
+<div class="card"><h3>Save backup to Downloads</h3><button class="s" onclick="dl(JSON.stringify(D),'finance-backup.json','application/json')">Download JSON backup</button></div>
+<div class="card"><h3>Arrange tabs</h3>${ord().map((k,i)=>`<div class="t"><span>${tabs[k]}</span><span><button class="x" style="color:var(--g)" onclick="mv(${i},-1)">▲ Up</button><button class="x" style="color:var(--g)" onclick="mv(${i},1)">▼ Down</button></span></div>`).join('')}<div class="m">Order is saved with your data.</div></div>`}
+function restore(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.txns)throw 0;if(confirm('Replace current data with this backup?')){D=d;save();render()}}catch(e){alert('Not a valid backup file')}};r.readAsText(f)}
+let E=null,U=null;const esc=s=>(s||'').replace(/"/g,'&quot;');
+function editTxn(id){E=id;tab='home';render();scrollTo(0,0)}
+function resetNow(){if(!confirm('Backup to Downloads, clear all entries, and use current balances as opening balances?'))return;
+dl(JSON.stringify(D),'finance-backup-'+today()+'.json','application/json');D.accounts.forEach(a=>a.open=bal(a));D.txns=[];save();render();alert('Done. Opening balances updated.')}
+function sched(){if(window.Android&&Android.schedule)Android.schedule(JSON.stringify((D.ups||[]).filter(u=>!u.done).map(u=>({t:u.title+(u.who?' → '+u.who:''),a:u.amt,d:u.date,k:+u.k||0}))))}
+function due(){D.ups=D.ups||[];const e=D.ups.find(u=>u.id==U)||{},L=[...D.ups].sort((a,b)=>(a.done?1:0)-(b.done?1:0)||a.date.localeCompare(b.date));
+return `<div class="card"><h3>${U?'Edit':'Add'} upcoming payment</h3><input id="ut" placeholder="What for? (rent, insurance…)" value="${esc(e.title)}"><input id="uw" placeholder="Pay to (person / company)" value="${esc(e.who)}">
+<div class="row"><input id="ua" type="number" placeholder="Amount" value="${e.amt||''}"><input id="ud" type="date" value="${e.date||today()}"></div>
+<select id="uk">${[[0,'Alert on due day'],[1,'Alert 1 day before'],[3,'Alert 3 days before'],[7,'Alert 7 days before']].map(([v,l])=>`<option value="${v}" ${v==e.k?'selected':''}>${l}</option>`).join('')}</select>
+<button onclick="saveUp()">${U?'Update':'Add payment'}</button>${U?'<button class="s" onclick="U=null;render()">Cancel</button>':''}</div>
+<div class="card"><h3>Upcoming</h3>${L.map(u=>`<div class="t" style="${u.done?'opacity:.5':''}"><span>${u.title}<br><span class="m">${u.who?'To '+u.who+' · ':''}Due ${u.date}${u.date<today()&&!u.done?' · OVERDUE':u.done?' · paid':''}</span></span>
+<span><b class="db">${inr(u.amt)}</b>${u.done?'':`<button class="x" onclick="payUp(${u.id})">✔</button>`}<button class="x" onclick="U=${u.id};render()">✎</button><button class="x" onclick="delUp(${u.id})">✕</button></span></div>`).join('')||'<div class="m">Nothing scheduled.</div>'}</div>`}
+function saveUp(){const a=+$('#ua').value;if(!a||!$('#ut').value)return alert('Enter purpose and amount');
+const o={title:$('#ut').value,who:$('#uw').value,amt:a,date:$('#ud').value,k:+$('#uk').value};
+if(U){Object.assign(D.ups.find(u=>u.id==U),o);U=null}else D.ups.push({id:uid(),done:false,...o});save();render()}
+function payUp(id){const u=D.ups.find(x=>x.id==id);u.done=true;
+if(confirm('Record as a debit entry?'))D.txns.push({id:uid(),type:'debit',amt:u.amt,date:today(),mode:'UPI',acc:D.accounts[0].id,note:u.title,who:u.who,cat:'Bills'});save();render()}
+function delUp(id){if(confirm('Delete?')){D.ups=D.ups.filter(u=>u.id!=id);save();render()}}
+try{sched()}catch(e){}
+const DC=['Salary','Business','Interest','Refund','Food','Rent','Bills','Transport','Shopping','Health','Education','EMI / Loan','Entertainment','Other'];
+D.cats=D.cats||DC.slice();let CM=today().slice(0,7);
+function addCat(){const c=(prompt('New category name')||'').trim();if(c&&!D.cats.includes(c)){D.cats.push(c);save();render()}}
+function charts(){const L=D.txns.filter(t=>t.date.startsWith(CM)),by=ty=>{const m={};L.filter(t=>t.type==ty).forEach(t=>{const c=t.cat||'Uncategorised';m[c]=(m[c]||0)+ +t.amt});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
+const bars=(a,cl)=>{const mx=Math.max(1,...a.map(x=>x[1]));return a.map(([c,v])=>`<div style="margin:6px 0"><div class="t" style="border:0;padding:0"><span>${c}</span><b>${inr(v)}</b></div><div class="bar"><i style="width:${v/mx*100}%;background:${cl}"></i></div></div>`).join('')||'<div class="m">No data</div>'};
+return `<div class="card"><h3>Charts</h3><input type="month" value="${CM}" onchange="CM=this.value||CM;render()"><div class="m">Spending by category</div>${bars(by('debit'),'var(--db)')}<div class="m" style="margin-top:10px">Income by category</div>${bars(by('credit'),'var(--cr)')}</div>`+trend()}
+function trend(){const n=new Date(),r=[];for(let k=5;k>=0;k--){const d=new Date(n.getFullYear(),n.getMonth()-k,1),m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),L=D.txns.filter(t=>t.date.startsWith(m)),f=ty=>L.filter(t=>t.type==ty).reduce((a,t)=>a+ +t.amt,0);r.push([m.slice(5)+'/'+m.slice(2,4),f('credit'),f('debit')])}
+const mx=Math.max(1,...r.flatMap(x=>[x[1],x[2]]));
+return `<div class="card"><h3>Last 6 months</h3><div style="display:flex;gap:8px">${r.map(x=>`<div style="flex:1;text-align:center"><div style="display:flex;align-items:flex-end;gap:2px;height:100px"><div style="flex:1;background:var(--cr);height:${x[1]/mx*100}%"></div><div style="flex:1;background:var(--db);height:${x[2]/mx*100}%"></div></div><div class="m">${x[0]}</div></div>`).join('')}</div><div class="m"><span class="cr">■ in</span> <span class="db">■ out</span></div></div>`}
+try{Android.persist(JSON.stringify(D))}catch(e){}
+const h=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],fd=d=>d.slice(8)+' '+MN[+d.slice(5,7)-1]+' '+d.slice(2,4),cut=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t,an=id=>(D.accounts.find(a=>a.id==id)||{}).name||'—';
+let X=null,AE=null,AX=null,AD=today();
+function txn(){const L=filt(),ci=L.filter(t=>t.type=='credit').reduce((s,t)=>s+ +t.amt,0),co=L.filter(t=>t.type=='debit').reduce((s,t)=>s+ +t.amt,0);
+return `<div class="card"><h3>Search entries</h3><div class="row"><input type="date" value="${F.from}" onchange="F.from=this.value;render()"><input type="date" value="${F.to}" onchange="F.to=this.value;render()"></div>
+<input placeholder="Search description, person, mode" value="${h(F.q)}" onchange="F.q=this.value;render()"><button class="s" onclick="F={from:'',to:'',q:''};render()">Clear</button></div>
+<div class="card"><div class="m" style="margin-bottom:6px">${L.length} entries · <span class="cr">in ${inr(ci)}</span> · <span class="db">out ${inr(co)}</span></div>
+<table class="tb"><tr><th>Date</th><th>Description</th><th>Category</th><th class="a">Amount</th></tr>
+${L.map(t=>`<tr class="r ${X==t.id?'sel':''}" onclick="X=X==${t.id}?null:${t.id};render()"><td>${fd(t.date)}</td><td>${h(cut(t.note||'—',16))}</td><td class="m">${h(cut(t.cat||'—',9))}</td><td class="a ${t.type=='credit'?'cr':'db'}">${t.type=='credit'?'+':'-'}${inr(t.amt)}</td></tr>`+
+(X==t.id?`<tr><td colspan="4"><div class="sm"><b>${h(t.note||'(no description)')}</b><br>${t.type=='credit'?'Credit (money in)':'Debit (money out)'} · ${inr(t.amt)}<br>Date: ${t.date}<br>Category: ${h(t.cat||'—')}<br>${t.type=='credit'?'Received from':'Paid to'}: ${h(t.who||'—')}<br>Mode: ${h(t.mode)} · Account: ${h(an(t.acc))}<br>
+<button onclick="X=null;editTxn(${t.id})">Edit</button><button class="s" onclick="X=null;delTxn(${t.id})">Delete</button></div></td></tr>`:'')).join('')||'<tr><td colspan="4" class="m">No entries found.</td></tr>'}</table></div>`}
+function acst(a){const L=D.txns.filter(t=>t.acc==a.id&&t.date<=AD),i=L.filter(t=>t.type=='credit').reduce((s,t)=>s+ +t.amt,0),o=L.filter(t=>t.type=='debit').reduce((s,t)=>s+ +t.amt,0);return{i,o,n:L.length,b:+a.open+i-o}}
+function acc(){const e=D.accounts.find(a=>a.id==AE)||{};
+return `<div class="card"><h3>Check balance</h3><div class="m">Balance as of date</div><input type="date" value="${AD}" onchange="AD=this.value||today();render()">
+<div class="m">Total: <b>${inr(D.accounts.reduce((s,a)=>s+acst(a).b,0))}</b></div></div>
+<div class="card">${D.accounts.map(a=>{const q=acst(a);return `<div class="t" style="cursor:pointer" onclick="AX=AX==${a.id}?null:${a.id};render()"><span>${h(a.name)}</span><b>${inr(q.b)}</b></div>`+(AX==a.id?`<div class="sm">Opening balance: ${inr(a.open)}<br>Total credits: <span class="cr">${inr(q.i)}</span><br>Total debits: <span class="db">${inr(q.o)}</span><br>Entries: ${q.n}<br>
+<button onclick="AE=${a.id};render();scrollTo(0,9999)">Edit</button><button class="s" onclick="delAcc(${a.id})">Delete</button></div>`:'')}).join('')}</div>
+<div class="card"><h3>${AE?'Edit account':'Add account'}</h3><input id="an" placeholder="Account name" value="${h(e.name)}"><input id="ao" type="number" placeholder="Opening balance" value="${e.open??''}"><input id="al" placeholder="Last 4 digits of account no. (to match SMS)" maxlength="6" value="${h(e.last4)}">
+<button onclick="saveAcc()">${AE?'Update account':'Add account'}</button>${AE?'<button class="s" onclick="AE=null;render()">Cancel</button>':''}</div>`}
+function saveAcc(){const n=$('#an').value.trim();if(!n)return alert('Enter account name');
+if(AE){const a=D.accounts.find(x=>x.id==AE);a.name=n;a.open=+$('#ao').value||0;a.last4=$('#al').value.trim();AE=null}else D.accounts.push({id:uid(),name:n,open:+$('#ao').value||0,last4:$('#al').value.trim()});save();render()}
+function delAcc(id){if(D.accounts.length<2)return alert('You need at least one account.');const a=D.accounts.find(x=>x.id==id),n=D.txns.filter(t=>t.acc==id).length;
+if(!confirm(`Delete "${a.name}"${n?` and its ${n} entries`:''}? This cannot be undone.`))return;D.accounts=D.accounts.filter(x=>x.id!=id);D.txns=D.txns.filter(t=>t.acc!=id);AX=null;save();render()}
+function ord(){const o=(D.tabOrder||[]).filter(k=>tabs[k]);Object.keys(tabs).forEach(k=>{if(!o.includes(k))o.push(k)});return o}
+function mv(i,d){const o=ord(),j=i+d;if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];D.tabOrder=o;save();render()}
+const hsh=x=>{let k=0;for(const c of x)k=(k*31+c.charCodeAt(0))|0;return 'h'+k};
+const MM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+const CK=[[/swiggy|zomato|food|restaurant|cafe|bhog|kitchen|dhaba|sweet|bakery|pizza|burger/i,'Food'],[/uber|ola|metro|fuel|petrol|irctc|redbus|fastag|parking/i,'Transport'],[/amazon|flipkart|myntra|ajio|mart|store|mall/i,'Shopping'],[/electric|bses|power|gas|recharge|airtel|jio|vodafone|broadband|insurance|bill/i,'Bills'],[/pharma|hospital|clinic|medical|lab|apollo/i,'Health'],[/school|college|fees|tuition|course/i,'Education'],[/netflix|movie|bookmyshow|spotify|hotstar|prime/i,'Entertainment'],[/rent/i,'Rent'],[/salary|payroll/i,'Salary'],[/interest/i,'Interest'],[/refund|reversal/i,'Refund']];
+function parseSms(b){const t=b.replace(/\s+/g,' ').trim();if(/\botp\b|one time password/i.test(t))return null;
+const am=t.match(/(?:INR|Rs\.?|₹)\s?([\d,]+(?:\.\d+)?)/i);if(!am)return null;const amt=+am[1].replace(/,/g,'');if(!amt)return null;
+const ci=t.search(/\b(credited|deposited|received)\b/i),di=t.search(/\b(debited|withdrawn|spent|paid|purchase)\b/i);if(ci<0&&di<0)return null;
+const type=(ci>=0&&(di<0||ci<di))?'credit':'debit';
+const l4=(t.match(/(?:a\/c(?: no\.?)?|acct?|account|card)\s*(?:no\.?)?\s*[xX*]*\s*(\d{3,4})\b/i)||[])[1]||'';
+let date=today();const dm=t.match(/(?<!\d)(\d{1,2})[-\/ ]([A-Za-z]{3}|\d{1,2})[-\/ ](\d{2,4})(?!\d)/);
+if(dm){const mo=isNaN(dm[2])?MM[dm[2].toLowerCase()]:+dm[2],y=+dm[3]<100?2000+ +dm[3]:+dm[3];if(mo)date=y+'-'+String(mo).padStart(2,'0')+'-'+dm[1].padStart(2,'0')}
+const ref=(t.match(/UPI[:\/ ]*(?:P2[AP]\/)?(\d{9,})/i)||t.match(/(?:ref(?:erence)?(?: no)?[:. ]*)(\d{6,})/i)||[])[1]||'';
+let who=(t.match(/UPI\/[A-Za-z0-9]+\/\d+\/([A-Za-z0-9 &.\-@]+?)(?=\s+Not you|\s+SMS|\/|$)/)||t.match(/\b(?:to|from|by) ([A-Z][A-Z0-9 &.\-@]+?)(?= thru| through| via| on | Ref|\.|$)/)||[])[1]||'';who=who.trim();
+const mode=/UPI/i.test(t)?'UPI':/NEFT|IMPS|RTGS|net ?banking/i.test(t)?'Net Banking':/\bATM\b|cash/i.test(t)?'Cash':/card|\bPOS\b/i.test(t)?'Debit Card':'Net Banking';
+let note=who?((mode=='UPI'?'UPI ':'')+(type=='debit'?'to ':'from ')+who):((t.match(/\bfor ([^.]+?)(?:\. |\.$| Avl| Bal|$)/)||[])[1]||'').replace(/^\d+/,'').trim();
+if(!note)note=type=='debit'?'Debit':'Credit';
+let cat=type=='credit'?'Other':'Other';const hit=CK.find(([r])=>r.test(who+' '+note));if(hit&&(D.cats||[]).includes(hit[1]))cat=hit[1];
+const ac=D.accounts.find(x=>x.last4&&l4&&String(x.last4).endsWith(l4));
+return{type,amt,date,l4,ref,who,mode,note,cat,acc:(ac||D.accounts[0]).id,matched:!!ac}}
+function ingest(arr){D.pend=D.pend||[];D.seen=D.seen||[];let n=0;
+arr.forEach(m=>{const p=parseSms(m.b);if(!p)return;const k=p.ref||hsh(m.b);if(D.seen.includes(k)||D.pend.some(x=>x.key==k))return;D.pend.push({id:uid(),key:k,sender:m.s,raw:m.b,...p});n++});
+if(n){save();render()}return n}
+function pull(){try{if(window.Android&&Android.takeSms)ingest(JSON.parse(Android.takeSms()||'[]'))}catch(e){}}
+function impOld(){try{const n=ingest(JSON.parse(Android.importOld(30)||'[]'));alert(n?n+' transactions found. Review them below.':'No new bank SMS found (check SMS permission).')}catch(e){alert('Could not read SMS. Allow SMS permission in app settings.')}}
+function pbanner(){const n=(D.pend||[]).length;return n?`<div class="card" onclick="go('sms')" style="border-color:var(--g);cursor:pointer"><b>${n} bank SMS waiting for approval ›</b></div>`:''}
+function sms(){D.pend=D.pend||[];
+return `<div class="card"><h3>Bank SMS to approve</h3><div class="m">Check each one, edit if needed, then Approve. Nothing is added until you approve.</div><button class="s" onclick="impOld()">Import last 30 days of bank SMS</button></div>`+
+D.pend.map((p,i)=>`<div class="card"><div class="row"><select id="pt${i}"><option value="debit">Debit (out)</option><option value="credit" ${p.type=='credit'?'selected':''}>Credit (in)</option></select><input id="pa${i}" type="number" value="${p.amt}"></div>
+<div class="row"><input id="pd${i}" type="date" value="${p.date}"><select id="pm${i}">${MODES.map(x=>`<option ${x==p.mode?'selected':''}>${x}</option>`).join('')}</select></div>
+<input id="pn${i}" placeholder="Description (required)" value="${h(p.note)}"><input id="pw${i}" placeholder="Person / merchant" value="${h(p.who)}">
+<div class="row"><select id="pc${i}">${D.cats.map(c=>`<option ${c==p.cat?'selected':''}>${h(c)}</option>`).join('')}</select><select id="pk${i}">${D.accounts.map(a=>`<option value="${a.id}" ${a.id==p.acc?'selected':''}>${h(a.name)}</option>`).join('')}</select></div>
+${p.l4&&!p.matched?`<div class="m">A/c ending ${h(p.l4)} not matched. Add last 4 digits to an account in the Accounts tab.</div>`:''}
+<details><summary class="m">Original SMS</summary><div class="m">${h(p.raw)}</div></details>
+<div class="row"><button onclick="okP(${i})">Approve</button><button class="s" onclick="noP(${i})">Reject</button></div></div>`).join('')||'<div class="card m">No SMS waiting for approval.</div>'}
+function okP(i){const p=D.pend[i],g=x=>$('#'+x+i).value,a=+g('pa');if(!a)return alert('Enter amount');if(!g('pn').trim())return alert('Description is required');
+D.txns.push({id:uid(),type:g('pt'),amt:a,date:g('pd'),mode:g('pm'),acc:g('pk'),note:g('pn').trim(),who:g('pw'),cat:g('pc'),ref:p.key});D.seen.push(p.key);D.pend.splice(i,1);save();render()}
+function noP(i){if(!confirm('Reject this SMS? It will not be added.'))return;D.seen.push(D.pend[i].key);D.pend.splice(i,1);save();render()}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
+pull();
+render();
+</script></body></html>
