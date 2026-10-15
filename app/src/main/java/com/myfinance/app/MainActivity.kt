@@ -54,12 +54,12 @@ class MainActivity : Activity() {
             runOnUiThread { Toast.makeText(this@MainActivity, "Saved to Downloads: $name", Toast.LENGTH_LONG).show() }
         }
         @JavascriptInterface fun persist(json: String) {
-            File(filesDir, "finance.json").writeText(json)
+            File(filesDir, "hissab.json").writeText(json)
             getSharedPreferences("p", 0).getString("bk", null)?.let {
                 try { contentResolver.openOutputStream(Uri.parse(it), "wt")?.use { o -> o.write(json.toByteArray()) } } catch (e: Exception) {}
             }
         }
-        @JavascriptInterface fun load(): String { val f = File(filesDir, "finance.json"); return if (f.exists()) f.readText() else "" }
+        @JavascriptInterface fun load(): String { val f = File(filesDir, "hissab.json"); return if (f.exists()) f.readText() else "" }
         @JavascriptInterface fun status(): String = if (getSharedPreferences("p", 0).getString("bk", null) != null) "✔ Drive auto-backup is ON" else "Not set up yet"
         @JavascriptInterface fun pickBackup() {
             runOnUiThread {

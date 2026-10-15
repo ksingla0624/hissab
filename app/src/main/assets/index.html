@@ -109,10 +109,10 @@ let tok;
 function auth(cb){const id=localStorage.cid;if(!id)return alert('Enter your Google Client ID first');
 if(!window.google)return alert('Google script not loaded. Check internet.');
 google.accounts.oauth2.initTokenClient({client_id:id,scope:'https://www.googleapis.com/auth/drive.appdata',callback:r=>{if(r.access_token){tok=r.access_token;cb()}}}).requestAccessToken()}
-async function find(){const r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'finance.json'&fields=files(id)",{headers:{Authorization:'Bearer '+tok}});return (await r.json()).files[0]}
+async function find(){const r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'hissab.json'&fields=files(id)",{headers:{Authorization:'Bearer '+tok}});return (await r.json()).files[0]}
 function up(){auth(async()=>{const f=await find(),h={Authorization:'Bearer '+tok};let r;
 if(f)r=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=media`,{method:'PATCH',headers:h,body:JSON.stringify(D)});
-else{const b=new FormData();b.append('metadata',new Blob([JSON.stringify({name:'finance.json',parents:['appDataFolder']})],{type:'application/json'}));b.append('file',new Blob([JSON.stringify(D)],{type:'application/json'}));
+else{const b=new FormData();b.append('metadata',new Blob([JSON.stringify({name:'hissab.json',parents:['appDataFolder']})],{type:'application/json'}));b.append('file',new Blob([JSON.stringify(D)],{type:'application/json'}));
 r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:h,body:b})}
 alert(r.ok?'Backed up to Google Drive':'Backup failed')})}
 function down(){auth(async()=>{const f=await find();if(!f)return alert('No backup found in Drive');
@@ -121,22 +121,22 @@ D=await (await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=medi
 function set(){return `<div class="card"><h3>Google Drive sync</h3><input id="ci" placeholder="Google OAuth Client ID" value="${localStorage.cid||''}" onchange="localStorage.cid=this.value.trim()">
 <button onclick="up()">Back up to Drive</button><button class="s" onclick="down()">Restore from Drive</button>
 <div class="m">Data is stored in your app-private Drive folder. It also stays saved on this device.</div></div>
-<div class="card"><h3>Local backup</h3><button class="s" onclick="dl(JSON.stringify(D),'finance-backup.json','application/json')">Download JSON backup</button></div>
+<div class="card"><h3>Local backup</h3><button class="s" onclick="dl(JSON.stringify(D),'hissab-backup.json','application/json')">Download JSON backup</button></div>
 `}
 function set(){return `<div class="card"><h3>Back up to Google Drive</h3>
-<button onclick="Android.share('finance-backup.json',JSON.stringify(D))">Share backup → choose Drive</button>
+<button onclick="Android.share('hissab-backup.json',JSON.stringify(D))">Share backup → choose Drive</button>
 <div class="m">Pick "Save to Drive" in the share sheet. Your data is also auto-backed up by Android to your Google account.</div></div>
 <div class="card"><h3>Restore</h3><input type="file" accept=".json,application/json" onchange="restore(this)">
-<div class="m">Choose a finance-backup.json file (from Drive or Downloads).</div></div>
+<div class="m">Choose a hissab-backup.json file (from Drive or Downloads).</div></div>
 <div class="card"><h3>Auto-save to Google Drive</h3><button onclick="Android.pickBackup()">Choose Drive file for auto-backup</button><div class="m">${window.Android&&Android.status?Android.status():''}</div><div class="m">Pick Drive → My Drive → Save once. After that every change is written to that file automatically. A second copy is also kept inside the app.</div></div>
 <div class="card"><h3>Reset from now</h3><button class="s" style="color:var(--db);border-color:var(--db)" onclick="resetNow()">Backup &amp; start fresh</button><div class="m">Saves a backup, clears all entries, and sets today's balances as opening balances. Loans and due payments are kept.</div></div>
-<div class="card"><h3>Save backup to Downloads</h3><button class="s" onclick="dl(JSON.stringify(D),'finance-backup.json','application/json')">Download JSON backup</button></div>
+<div class="card"><h3>Save backup to Downloads</h3><button class="s" onclick="dl(JSON.stringify(D),'hissab-backup.json','application/json')">Download JSON backup</button></div>
 <div class="card"><h3>Arrange tabs</h3>${ord().map((k,i)=>`<div class="t"><span>${tabs[k]}</span><span><button class="x" style="color:var(--g)" onclick="mv(${i},-1)">▲ Up</button><button class="x" style="color:var(--g)" onclick="mv(${i},1)">▼ Down</button></span></div>`).join('')}<div class="m">Order is saved with your data.</div></div>`}
 function restore(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.txns)throw 0;if(confirm('Replace current data with this backup?')){D=d;save();render()}}catch(e){alert('Not a valid backup file')}};r.readAsText(f)}
 let E=null,U=null;const esc=s=>(s||'').replace(/"/g,'&quot;');
 function editTxn(id){E=id;tab='home';render();scrollTo(0,0)}
 function resetNow(){if(!confirm('Backup to Downloads, clear all entries, and use current balances as opening balances?'))return;
-dl(JSON.stringify(D),'finance-backup-'+today()+'.json','application/json');D.accounts.forEach(a=>a.open=bal(a));D.txns=[];save();render();alert('Done. Opening balances updated.')}
+dl(JSON.stringify(D),'hissab-backup-'+today()+'.json','application/json');D.accounts.forEach(a=>a.open=bal(a));D.txns=[];save();render();alert('Done. Opening balances updated.')}
 function sched(){if(window.Android&&Android.schedule)Android.schedule(JSON.stringify((D.ups||[]).filter(u=>!u.done).map(u=>({t:u.title+(u.who?' → '+u.who:''),a:u.amt,d:u.date,k:+u.k||0}))))}
 function due(){D.ups=D.ups||[];const e=D.ups.find(u=>u.id==U)||{},L=[...D.ups].sort((a,b)=>(a.done?1:0)-(b.done?1:0)||a.date.localeCompare(b.date));
 return `<div class="card"><h3>${U?'Edit':'Add'} upcoming payment</h3><input id="ut" placeholder="What for? (rent, insurance…)" value="${esc(e.title)}"><input id="uw" placeholder="Pay to (person / company)" value="${esc(e.who)}">
@@ -189,7 +189,7 @@ function ord(){const o=(D.tabOrder||[]).filter(k=>tabs[k]);Object.keys(tabs).for
 function mv(i,d){const o=ord(),j=i+d;if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];D.tabOrder=o;save();render()}
 const hsh=x=>{let k=0;for(const c of x)k=(k*31+c.charCodeAt(0))|0;return 'h'+k};
 const MM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
-const CK=[[/swiggy|zomato|food|restaurant|cafe|bhog|kitchen|dhaba|sweet|bakery|pizza|burger|biryani|hotel|bigbasket|blinkit|zepto|grocer|dmart|kirana|milk|dairy/i,'Food'],[/uber|ola|rapido|metro|fuel|petrol|diesel|irctc|redbus|fastag|parking|railway|airlines|indigo|flight/i,'Transport'],[/amazon|flipkart|myntra|ajio|meesho|nykaa|mart|store|mall|retail|shop/i,'Shopping'],[/electric|bses|power|gas|recharge|airtel|jio|vodafone|vi\b|broadband|insurance|lic\b|bill|water|dth|tatasky|postpaid/i,'Bills'],[/pharma|hospital|clinic|medical|lab|apollo|medplus|1mg|netmeds|doctor/i,'Health'],[/school|college|fees|tuition|course|university|udemy/i,'Education'],[/netflix|movie|bookmyshow|spotify|hotstar|prime|pvr|inox|game/i,'Entertainment'],[/\brent\b/i,'Rent'],[/emi|loan|nach|ecs|finance|bajaj/i,'EMI / Loan'],[/salary|payroll/i,'Salary'],[/interest|int\.pd|int pd/i,'Interest'],[/refund|reversal|reversed|cashback/i,'Refund']];
+const CK=[[/swiggy|zomato|food|restaurant|cafe|bhog|kitchen|dhaba|sweet|bakery|pizza|burger|biryani|hotel|bigbasket|blinkit|zepto|grocer|dmart|kirana|milk|dairy/i,'Food'],[/uber|ola|rapido|metro|fuel|petrol|diesel|irctc|redbus|fastag|parking|railway|airlines|indigo|flight/i,'Transport'],[/amazon|flipkart|myntra|ajio|meesho|nykaa|mart|store|mall|retail|shop/i,'Shopping'],[/electric|bses|power|gas|recharge|airtel|jio|vodafone|vi\b|broadband|insurance|lic\b|bill|water|dth|tatasky|postpaid/i,'Bills'],[/pharma|hospital|clinic|medical|lab|apollo|medplus|1mg|netmeds|doctor/i,'Health'],[/school|college|fees|tuition|course|university|udemy/i,'Education'],[/netflix|movie|bookmyshow|spotify|hotstar|prime|pvr|inox|game/i,'Entertainment'],[/\brent\b/i,'Rent'],[/emi|loan|nach|ecs|hissab|bajaj/i,'EMI / Loan'],[/salary|payroll/i,'Salary'],[/interest|int\.pd|int pd/i,'Interest'],[/refund|reversal|reversed|cashback/i,'Refund']];
 const CRW=/\b(credited|credit|deposited|deposit|received|refunded|refund|reversed|reversal|cr)\b/i,DRW=/\b(debited|debit|withdrawn|withdrawal|withdrew|spent|paid|purchase|purchased|sent|transferred|deducted|charged|dr)\b/i,WKW=/\b(payment|transaction|txn|transfer|upi)\b/i;
 const NOTX=/\b(otp|one time password|verification code|failed|declined|unsuccessful|insufficient|could not|will be debited|to be debited|will be credited|is due|min(?:imum)? due|due on|due date|statement|pre-?approved|eligible|congratulations|apply now|click here|requested money|collect request|has requested|request of)\b/i;
 function nameAfter(t,kws){const re=new RegExp('\\b('+kws+')\\s+([A-Za-z0-9][A-Za-z0-9 &.\\-@_]{1,40}?)(?=\\s+(?:thru|through|via|on|ref|not|call|avl|bal|available|dt|date|if|txn|upi|utr|using|from|to|at|for|credited|debited)\\b|[,;(]|\\.\\s|\\.$|$)','gi');let m;
