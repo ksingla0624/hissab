@@ -1,4 +1,4 @@
-package com.hissab.app
+package com.myfinance.app
 import android.app.*
 import android.content.*
 import android.provider.Telephony
@@ -6,7 +6,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object Sms {
-    private val RX = Regex("(debited|credited|deposited|withdrawn|spent|received)", RegexOption.IGNORE_CASE)
+    private val RX = Regex("(debit|credit|deposit|withdraw|spent|received|sent|paid|payment|purchase|transfer|refund|revers|deduct|charged|\\bdr\\b|\\bcr\\b|txn|transaction)", RegexOption.IGNORE_CASE)
     private val AM = Regex("(inr|rs\\.?|₹)", RegexOption.IGNORE_CASE)
     private val OTP = Regex("\\botp\\b", RegexOption.IGNORE_CASE)
     fun looks(b: String) = RX.containsMatchIn(b) && AM.containsMatchIn(b) && !OTP.containsMatchIn(b)
