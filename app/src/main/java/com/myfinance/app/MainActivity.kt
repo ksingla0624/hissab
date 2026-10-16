@@ -73,7 +73,7 @@ class MainActivity : Activity() {
             val arr = JSONArray(); val since = System.currentTimeMillis() - days * 86400000L
             contentResolver.query(Uri.parse("content://sms/inbox"), arrayOf("address", "body", "date"), "date>?", arrayOf(since.toString()), "date DESC LIMIT 500")?.use { c ->
                 while (c.moveToNext()) { val b = c.getString(1) ?: continue
-                    if (Sms.looks(b)) arr.put(JSONObject().put("s", c.getString(0)).put("b", b).put("t", c.getLong(2))) }
+                    if (Sms.looks(b) && Sms.senderOk(c.getString(0))) arr.put(JSONObject().put("s", c.getString(0)).put("b", b).put("t", c.getLong(2))) }
             }
             return arr.toString()
         }

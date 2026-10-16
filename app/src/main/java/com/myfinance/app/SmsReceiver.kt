@@ -6,9 +6,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object Sms {
-    private val RX = Regex("(debit|credit|deposit|withdraw|spent|received|sent|paid|payment|purchase|transfer|refund|revers|deduct|charged|\\bdr\\b|\\bcr\\b|txn|transaction)", RegexOption.IGNORE_CASE)
+    private val RX = Regex("(debited|credited|deposited|withdrawn|spent|received|sent|paid|purchase|transferred|deducted|charged|refunded|reversed|\\bdr\\b|\\bcr\\b)", RegexOption.IGNORE_CASE)
     private val AM = Regex("(inr|rs\\.?|₹)", RegexOption.IGNORE_CASE)
     private val OTP = Regex("\\botp\\b", RegexOption.IGNORE_CASE)
+    fun senderOk(s: String?): Boolean { val x = (s ?: "").trim(); return !(Regex("^\\+?[\\d\\s-]+$").matches(x) || x.endsWith("-P", true)) }
     fun looks(b: String) = RX.containsMatchIn(b) && AM.containsMatchIn(b) && !OTP.containsMatchIn(b)
     fun add(c: Context, s: String, b: String, t: Long) {
         val sp = c.getSharedPreferences("p", 0)
@@ -28,7 +29,7 @@ class SmsReceiver : BroadcastReceiver() {
         val m = Telephony.Sms.Intents.getMessagesFromIntent(i) ?: return
         if (m.isEmpty()) return
         val body = m.joinToString("") { it.messageBody ?: "" }
-        if (!Sms.looks(body)) return
+        if (!Sms.looks(body) || !Sms.senderOk(m[0].originatingAddress)) return
         Sms.add(c, m[0].originatingAddress ?: "", body, System.currentTimeMillis())
         val nm = c.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel("sms", "Bank SMS", NotificationManager.IMPORTANCE_DEFAULT))

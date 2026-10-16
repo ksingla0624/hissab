@@ -190,14 +190,16 @@ function mv(i,d){const o=ord(),j=i+d;if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j
 const hsh=x=>{let k=0;for(const c of x)k=(k*31+c.charCodeAt(0))|0;return 'h'+k};
 const MM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 const CK=[[/swiggy|zomato|food|restaurant|cafe|bhog|kitchen|dhaba|sweet|bakery|pizza|burger|biryani|hotel|bigbasket|blinkit|zepto|grocer|dmart|kirana|milk|dairy/i,'Food'],[/uber|ola|rapido|metro|fuel|petrol|diesel|irctc|redbus|fastag|parking|railway|airlines|indigo|flight/i,'Transport'],[/amazon|flipkart|myntra|ajio|meesho|nykaa|mart|store|mall|retail|shop/i,'Shopping'],[/electric|bses|power|gas|recharge|airtel|jio|vodafone|vi\b|broadband|insurance|lic\b|bill|water|dth|tatasky|postpaid/i,'Bills'],[/pharma|hospital|clinic|medical|lab|apollo|medplus|1mg|netmeds|doctor/i,'Health'],[/school|college|fees|tuition|course|university|udemy/i,'Education'],[/netflix|movie|bookmyshow|spotify|hotstar|prime|pvr|inox|game/i,'Entertainment'],[/\brent\b/i,'Rent'],[/emi|loan|nach|ecs|hissab|bajaj/i,'EMI / Loan'],[/salary|payroll/i,'Salary'],[/interest|int\.pd|int pd/i,'Interest'],[/refund|reversal|reversed|cashback/i,'Refund']];
-const CRW=/\b(credited|credit|deposited|deposit|received|refunded|refund|reversed|reversal|cr)\b/i,DRW=/\b(debited|debit|withdrawn|withdrawal|withdrew|spent|paid|purchase|purchased|sent|transferred|deducted|charged|dr)\b/i,WKW=/\b(payment|transaction|txn|transfer|upi)\b/i;
+const CRW=/\b(credited|deposited|received|refunded|reversed)\b|(?<=[\d.,]\s?)\bcr\b/i,DRW=/\b(debited|withdrawn|withdrew|spent|paid|purchased|sent|transferred|deducted|charged)\b|(?<=[\d.,]\s?)\bdr\b/i,WKW=/\b(?!x)\b/;
+const PROMO=/\b(offers?|up ?to|win|discount|coupons?|vouchers?|rewards?|t&cs?|tncs?|apply|avail|spend|get|exclusive|hurry|congrats|limited period|valid (?:till|until)|shop now|book now|no cost emi|pre-?approved|click|download|refer|earn|lucky)\b|%\s?off|\boff\b|https?:|www\.|bit\.ly/i;
+function senderOk(x){x=String(x||'').trim();if(!x)return true;if(/^\+?\d[\d\s-]*$/.test(x))return false;if(/-p$/i.test(x))return false;return true}
 const NOTX=/\b(otp|one time password|verification code|failed|declined|unsuccessful|insufficient|could not|will be debited|to be debited|will be credited|is due|min(?:imum)? due|due on|due date|statement|pre-?approved|eligible|congratulations|apply now|click here|requested money|collect request|has requested|request of)\b/i;
 function nameAfter(t,kws){const re=new RegExp('\\b('+kws+')\\s+([A-Za-z0-9][A-Za-z0-9 &.\\-@_]{1,40}?)(?=\\s+(?:thru|through|via|on|ref|not|call|avl|bal|available|dt|date|if|txn|upi|utr|using|from|to|at|for|credited|debited)\\b|[,;(]|\\.\\s|\\.$|$)','gi');let m;
 while((m=re.exec(t))){const k=m[1],n=m[2].trim();if(/^\d+$/.test(n)||/^(a\/c|ac|acct|account|card|your|the|you|bank|upi|imps|neft|rtgs|atm|pos|nach|ecs|cheque|chq|card no)\b/i.test(n))continue;if(k[0]===k[0].toUpperCase()||/^[A-Z]/.test(n))return n}return''}
 function parseSms(b){const t=b.replace(/\s+/g,' ').trim();if(NOTX.test(t))return null;
 const am=t.match(/(?:INR|Rs\.?|₹)[:\s\-]*([\d,]+(?:\.\d+)?)/i);if(!am)return null;const amt=+am[1].replace(/,/g,'');if(!amt)return null;
 const ci=t.search(CRW),di=t.search(DRW);let type;
-if(ci>=0||di>=0)type=(ci>=0&&(di<0||ci<di))?'credit':'debit';else if(WKW.test(t))type='debit';else return null;
+if(ci<0&&di<0)return null;type=(ci>=0&&(di<0||ci<di))?'credit':'debit';
 const l4=((t.match(/\b(?:a\/c|a\.c|acct?|account|card|ending|ac)\b\s*(?:no\.?|number|ending|with)?\s*[:\-]?\s*[xX*]*\s*(\d{3,4})\b/i)||t.match(/[xX*]{2,}\s?(\d{3,4})\b/)||[])[1])||'';
 let date=today(),dm;const pad=x=>String(x).padStart(2,'0'),yy=y=>+y<100?2000+ +y:+y;
 if(dm=t.match(/(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)/))date=dm[1]+'-'+dm[2]+'-'+dm[3];
@@ -213,16 +215,18 @@ const mode=/UPI/i.test(t)?'UPI':/\b(cheque|chq)\b/i.test(t)?'Cheque':/NEFT|IMPS|
 let note=who?((mode=='UPI'?'UPI ':'')+(type=='debit'?'to ':'from ')+who):((t.match(/\bfor ([^.]+?)(?:\. |\.$| Avl| Bal|$)/)||[])[1]||'').replace(/^\d+/,'').trim();
 if(!note)note=(mode=='Cash'&&type=='debit')?'Cash withdrawal':type=='debit'?'Debit':'Credit';
 let cat='Other';const hit=CK.find(([r])=>r.test(who+' '+note));if(hit&&(D.cats||[]).includes(hit[1]))cat=hit[1];
+if(!l4&&!ref&&!/\bupi\b/i.test(t))return null;
+if(PROMO.test(t)&&!(l4&&(/\b(avl|available|bal|balance)\b/i.test(t)||ref)))return null;
 const ac=D.accounts.find(x=>x.last4&&l4&&String(x.last4).endsWith(l4));
 return{type,amt,date,l4,ref,who,mode,note,cat,acc:(ac||D.accounts[0]).id,matched:!!ac}}
 function ingest(arr){D.pend=D.pend||[];D.seen=D.seen||[];let n=0;
-arr.forEach(m=>{const p=parseSms(m.b);if(!p)return;const k=p.ref||hsh(m.b);if(D.seen.includes(k)||D.pend.some(x=>x.key==k))return;D.pend.push({id:uid(),key:k,sender:m.s,raw:m.b,...p});n++});
+arr.forEach(m=>{if(!senderOk(m.s))return;const p=parseSms(m.b);if(!p)return;const k=p.ref||hsh(m.b);if(D.seen.includes(k)||D.pend.some(x=>x.key==k))return;D.pend.push({id:uid(),key:k,sender:m.s,raw:m.b,...p});n++});
 if(n){save();render()}return n}
 function pull(){try{if(window.Android&&Android.takeSms)ingest(JSON.parse(Android.takeSms()||'[]'))}catch(e){}}
 function impOld(){try{const n=ingest(JSON.parse(Android.importOld(30)||'[]'));alert(n?n+' transactions found. Review them below.':'No new bank SMS found (check SMS permission).')}catch(e){alert('Could not read SMS. Allow SMS permission in app settings.')}}
 function pbanner(){const n=(D.pend||[]).length;return n?`<div class="card" onclick="go('sms')" style="border-color:var(--g);cursor:pointer"><b>${n} bank SMS waiting for approval ›</b></div>`:''}
 function sms(){D.pend=D.pend||[];
-return `<div class="card"><h3>Bank SMS to approve</h3><div class="m">Check each one, edit if needed, then Approve. Nothing is added until you approve.</div><button class="s" onclick="impOld()">Import last 30 days of bank SMS</button></div>`+
+return `<div class="card"><h3>Bank SMS to approve</h3><div class="m">Check each one, edit if needed, then Approve. Nothing is added until you approve.</div><button class="s" onclick="impOld()">Import last 30 days of bank SMS</button>${D.pend.length?'<button class="s" onclick="rejAll()">Reject all waiting</button>':''}</div>`+
 D.pend.map((p,i)=>`<div class="card"><div class="row"><select id="pt${i}"><option value="debit">Debit (out)</option><option value="credit" ${p.type=='credit'?'selected':''}>Credit (in)</option></select><input id="pa${i}" type="number" value="${p.amt}"></div>
 <div class="row"><input id="pd${i}" type="date" value="${p.date}"><select id="pm${i}">${MODES.map(x=>`<option ${x==p.mode?'selected':''}>${x}</option>`).join('')}</select></div>
 <input id="pn${i}" placeholder="Description (required)" value="${h(p.note)}"><input id="pw${i}" placeholder="Person / merchant" value="${h(p.who)}">
@@ -230,6 +234,7 @@ D.pend.map((p,i)=>`<div class="card"><div class="row"><select id="pt${i}"><optio
 ${p.l4&&!p.matched?`<div class="m">A/c ending ${h(p.l4)} not matched. Add last 4 digits to an account in the Accounts tab.</div>`:''}
 <details><summary class="m">Original SMS</summary><div class="m">${h(p.raw)}</div></details>
 <div class="row"><button onclick="okP(${i})">Approve</button><button class="s" onclick="noP(${i})">Reject</button></div></div>`).join('')||'<div class="card m">No SMS waiting for approval.</div>'}
+function rejAll(){if(!D.pend.length||!confirm('Reject all '+D.pend.length+' waiting messages?'))return;D.pend.forEach(p=>D.seen.push(p.key));D.pend=[];save();render()}
 function okP(i){const p=D.pend[i],g=x=>$('#'+x+i).value,a=+g('pa');if(!a)return alert('Enter amount');if(!g('pn').trim())return alert('Description is required');
 D.txns.push({id:uid(),type:g('pt'),amt:a,date:g('pd'),mode:g('pm'),acc:g('pk'),note:g('pn').trim(),who:g('pw'),cat:g('pc'),ref:p.key});D.seen.push(p.key);D.pend.splice(i,1);save();render()}
 function noP(i){if(!confirm('Reject this SMS? It will not be added.'))return;D.seen.push(D.pend[i].key);D.pend.splice(i,1);save();render()}
